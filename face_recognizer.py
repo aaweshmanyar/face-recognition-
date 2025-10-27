@@ -1,45 +1,55 @@
 import numpy as np
 import cv2 as cv
+import os
 
+# Load Haar cascade
+haar_cascade_path = 'haar_face.xml'
+if not os.path.exists(haar_cascade_path):
+    raise FileNotFoundError("Haar cascade XML file not found.")
 
+haar_cascade = cv.CascadeClassifier(haar_cascade_path)
 
-haar_cascade = cv.CascadeClassifier('haar_face.xml')
-
+# Define known people
 people = ['Robert Downey', 'Tom Holland', 'Chris Hemsworth']
-# features = np.load('features.npy')
-# lables = np.load('lables.npy')
 
-
+# Load trained recognizer
 face_recognizer = cv.face.LBPHFaceRecognizer_create()
-face_recognizer.read('face_trained.yml')
+face_model_path = 'face_trained.yml'
+if not os.path.exists(face_model_path):
+    raise FileNotFoundError("Trained face model file not found.")
 
+face_recognizer.read(face_model_path)
 
-img = cv.imread(r'C:\python\opencv\face_recognization\Images\Tom Holland\tom.jpg')
+# Load and preprocess image
+img_path = r'C:\python\opencv\face_recognization\Images\Tom Holland\tom.jpg'
+img = cv.imread(img_path)
+if img is None:
+    raise FileNotFoundError(f"Image not found at path: {img_path}")
 
 gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-cv.namedWindow("show", cv.WINDOW_NORMAL)
-cv.resizeWindow("show", 300,300)
-cv.imshow("show", gray)
 
+# Detect faces
+face_rects = haar_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4)
 
-#Detect the face
-
-face_rect = haar_cascade.detectMultiScale(gray, 1.1, 4)
-
-
-for(x,y,w,h) in face_rect:
+for (x, y, w, h) in face_rects:
     faces_roi = gray[y:y+h, x:x+w]
 
     label, confidence = face_recognizer.predict(faces_roi)
-    # print(f'Label = {people[label]} with a confidence of {confidence}')
 
+    if label < len(people):
+        name = people[label]
+        text = f"{name} ({confidence:.2f})"
+    else:
+        text = "Unknown"
 
-    cv.putText(img, str(people[label]),  (10,28), cv.FONT_HERSHEY_COMPLEX, 1.0, (0,255,0), thickness=3)
-    cv.rectangle(img, (x,y), (x+w, y+h), (0,255,0), thickness=2)
+    cv.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), thickness=2)
+    cv.putText(img, text, (x, y - 10), cv.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 0), 2)
 
-
+# Display results
 cv.namedWindow("Detected", cv.WINDOW_NORMAL)
 cv.resizeWindow("Detected", 300, 300)
 cv.imshow("Detected", img)
 
+print("Press any key to close the window...")
 cv.waitKey(0)
+cv.destroyAllWindows()
